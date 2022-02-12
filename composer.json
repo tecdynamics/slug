@@ -1,0 +1,21 @@
+{
+    "name": "tecdynamics/slug",
+    "description": "Slug/Permalink",
+    "type": "package",
+    "autoload": {
+        "psr-4": {
+            "Tec\\Slug\\": "src"
+        }
+    },
+
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Tec\\Slug\\Providers\\SlugServiceProvider"
+            ],
+            "aliases": {
+                "SlugHelper": "Tec\\Slug\\Facades\\SlugHelperFacade"
+            }
+        }
+    }
+}

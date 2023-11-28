@@ -1,5 +1,5 @@
 {
-    "name": "tecdynamics/slug",
+    "name": "Tec/slug",
     "description": "Slug/Permalink",
     "type": "package",
     "autoload": {
@@ -7,14 +7,16 @@
             "Tec\\Slug\\": "src"
         }
     },
-
+    "require": {
+        "Tec/platform": "*@dev"
+    },
     "extra": {
         "laravel": {
             "providers": [
                 "Tec\\Slug\\Providers\\SlugServiceProvider"
             ],
             "aliases": {
-                "SlugHelper": "Tec\\Slug\\Facades\\SlugHelperFacade"
+                "SlugHelper": "Tec\\Slug\\Facades\\SlugHelper"
             }
         }
     }

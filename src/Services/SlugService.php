@@ -2,40 +2,21 @@
 
 namespace Tec\Slug\Services;
 
-use Tec\Slug\Repositories\Interfaces\SlugInterface;
+use Tec\Slug\Facades\SlugHelper;
+use Tec\Slug\Models\Slug;
 use Illuminate\Support\Str;
-use SlugHelper;
 
 class SlugService
 {
-    /**
-     * @var SlugInterface
-     */
-    protected $slugRepository;
-
-    /**
-     * SlugService constructor.
-     * @param SlugInterface $slugRepository
-     */
-    public function __construct(SlugInterface $slugRepository)
+    public function create(string|null $name, int|null $slugId = 0, $model = null): string|null
     {
-        $this->slugRepository = $slugRepository;
-    }
-
-    /**
-     * @param string $name
-     * @param int $slugId
-     * @return int|string
-     */
-    public function create($name, $slugId = 0, $model = null)
-    {
-        $slug = Str::slug($name, '-', !SlugHelper::turnOffAutomaticUrlTranslationIntoLatin() ? 'en' : false);
+        $slug = Str::slug($name, '-', ! SlugHelper::turnOffAutomaticUrlTranslationIntoLatin() ? 'en' : false);
 
         $index = 1;
         $baseSlug = $slug;
 
         $prefix = null;
-        if (!empty($model)) {
+        if (! empty($model)) {
             $prefix = SlugHelper::getPrefix($model);
         }
 
@@ -50,21 +31,14 @@ class SlugService
         return apply_filters(FILTER_SLUG_STRING, $slug, $model);
     }
 
-    /**
-     * @param string $slug
-     * @param string $slugId
-     * @param string $prefix
-     * @return bool
-     */
-    protected function checkIfExistedSlug($slug, $slugId, $prefix)
+    protected function checkIfExistedSlug(string|null $slug, int|string|null $slugId, string|null $prefix): bool
     {
-        return $this->slugRepository
-                ->getModel()
-                ->where([
-                    'key'    => $slug,
-                    'prefix' => $prefix,
-                ])
-                ->where('id', '!=', (int)$slugId)
-                ->count() > 0;
+        return Slug::query()
+            ->where([
+                'key' => $slug,
+                'prefix' => $prefix,
+            ])
+            ->where('id', '!=', (int)$slugId)
+            ->exists();
     }
 }

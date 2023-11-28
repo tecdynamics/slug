@@ -1,5 +1,5 @@
 {
-    "name": "Tec/slug",
+    "name": "tecdynamics/slug",
     "description": "Slug/Permalink",
     "type": "package",
     "autoload": {
@@ -8,7 +8,7 @@
         }
     },
     "require": {
-        "Tec/platform": "*@dev"
+        "tecdynamics/platform": "*"
     },
     "extra": {
         "laravel": {

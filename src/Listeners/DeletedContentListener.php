@@ -3,43 +3,18 @@
 namespace Tec\Slug\Listeners;
 
 use Tec\Base\Events\DeletedContentEvent;
-use Tec\Slug\Repositories\Interfaces\SlugInterface;
-use Exception;
-use SlugHelper;
+use Tec\Slug\Facades\SlugHelper;
+use Tec\Slug\Models\Slug;
 
 class DeletedContentListener
 {
-
-    /**
-     * @var SlugInterface
-     */
-    protected $slugRepository;
-
-    /**
-     * @param SlugInterface $slugRepository
-     */
-    public function __construct(SlugInterface $slugRepository)
-    {
-        $this->slugRepository = $slugRepository;
-    }
-
-    /**
-     * Handle the event.
-     *
-     * @param DeletedContentEvent $event
-     * @return void
-     */
-    public function handle(DeletedContentEvent $event)
+    public function handle(DeletedContentEvent $event): void
     {
         if (SlugHelper::isSupportedModel(get_class($event->data))) {
-            try {
-                $this->slugRepository->deleteBy([
-                    'reference_id'   => $event->data->id,
-                    'reference_type' => get_class($event->data),
-                ]);
-            } catch (Exception $exception) {
-                info($exception->getMessage());
-            }
+            Slug::query()->where([
+                'reference_id' => $event->data->getKey(),
+                'reference_type' => get_class($event->data),
+            ])->delete();
         }
     }
 }

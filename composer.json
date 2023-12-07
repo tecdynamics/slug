@@ -7,7 +7,7 @@
             "Tec\\Slug\\": "src"
         }
     },
-"require": {
+    "require": {
         "tecdynamics/platform": "*@dev"
     },
     "extra": {
@@ -16,7 +16,7 @@
                 "Tec\\Slug\\Providers\\SlugServiceProvider"
             ],
             "aliases": {
-                "SlugHelper": "Tec\\Slug\\Facades\\SlugHelperFacade"
+                "SlugHelper": "Tec\\Slug\\Facades\\SlugHelper"
             }
         }
     }

@@ -3,82 +3,69 @@
 namespace Tec\Slug\Listeners;
 
 use Tec\Base\Events\UpdatedContentEvent;
+use Tec\Base\Facades\BaseHelper;
 use Tec\Slug\Events\UpdatedSlugEvent;
-use Tec\Slug\Repositories\Interfaces\SlugInterface;
+use Tec\Slug\Facades\SlugHelper;
+use Tec\Slug\Models\Slug;
 use Tec\Slug\Services\SlugService;
 use Exception;
 use Illuminate\Support\Str;
-use SlugHelper;
 
 class UpdatedContentListener
 {
-
-    /**
-     * @var SlugInterface
-     */
-    protected $slugRepository;
-
-    /**
-     * UpdatedContentListener constructor.
-     * @param SlugInterface $slugRepository
-     */
-    public function __construct(SlugInterface $slugRepository)
+    public function handle(UpdatedContentEvent $event): void
     {
-        $this->slugRepository = $slugRepository;
-    }
-
-    /**
-     * Handle the event.
-     *
-     * @param UpdatedContentEvent $event
-     * @return void
-     */
-    public function handle(UpdatedContentEvent $event)
-    {
-        if (SlugHelper::isSupportedModel(get_class($event->data)) && $event->request->input('is_slug_editable', 0)) {
+        if (SlugHelper::isSupportedModel($class = get_class($event->data)) && $event->request->input('is_slug_editable', 0)) {
             try {
                 $slug = $event->request->input('slug');
 
-                if (!$slug) {
-                    $slug = $event->request->input('name');
+                $fieldNameToGenerateSlug = SlugHelper::getColumnNameToGenerateSlug($event->data);
+
+                if (! $slug) {
+                    $slug = $event->request->input($fieldNameToGenerateSlug);
                 }
 
-                if (!$slug && $event->data->name) {
-                    if (!SlugHelper::turnOffAutomaticUrlTranslationIntoLatin()) {
-                        $slug = Str::slug($event->data->name);
+                if (! $slug && $event->data->{$fieldNameToGenerateSlug}) {
+                    if (! SlugHelper::turnOffAutomaticUrlTranslationIntoLatin()) {
+                        $slug = Str::slug($event->data->{$fieldNameToGenerateSlug});
                     } else {
-                        $slug = $event->data->name;
+                        $slug = $event->data->{$fieldNameToGenerateSlug};
                     }
                 }
 
-                if (!$slug) {
+                if (! $slug) {
                     $slug = time();
                 }
 
-                $item = $this->slugRepository->getFirstBy([
-                    'reference_type' => get_class($event->data),
-                    'reference_id'   => $event->data->id,
-                ]);
+                $item = Slug::query()
+                    ->where([
+                        'reference_type' => $class,
+                        'reference_id' => $event->data->getKey(),
+                    ])
+                    ->first();
 
                 if ($item) {
                     if ($item->key != $slug) {
-                        $slugService = new SlugService(app(SlugInterface::class));
+                        $slugService = new SlugService();
                         $item->key = $slugService->create($slug, (int)$event->data->slug_id);
-                        $item->prefix = SlugHelper::getPrefix(get_class($event->data));
-                        $this->slugRepository->createOrUpdate($item);
+                        $item->prefix = SlugHelper::getPrefix($class, '', false);
+                        $item->save();
                     }
                 } else {
-                    $item = $this->slugRepository->createOrUpdate([
-                        'key'            => $slug,
-                        'reference_type' => get_class($event->data),
-                        'reference_id'   => $event->data->id,
-                        'prefix'         => SlugHelper::getPrefix(get_class($event->data)),
+                    $item = Slug::query()->create([
+                        'key' => $slug,
+                        'reference_type' => $class,
+                        'reference_id' => $event->data->getKey(),
+                        'prefix' => SlugHelper::getPrefix($class, '', false),
                     ]);
                 }
 
+                /**
+                 * @var Slug $item
+                 */
                 event(new UpdatedSlugEvent($event->data, $item));
             } catch (Exception $exception) {
-                info($exception->getMessage());
+                BaseHelper::logError($exception);
             }
         }
     }

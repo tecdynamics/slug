@@ -2,8 +2,8 @@
 
 namespace Tec\Slug\Facades;
 
-use Illuminate\Support\Facades\Facade;
 use Tec\Slug\SlugHelper as BaseSlugHelper;
+use Illuminate\Support\Facades\Facade;
 
 /**
  * @method static \Tec\Slug\SlugHelper registerModule(array|string $model, string|null $name = null)
@@ -25,10 +25,9 @@ use Tec\Slug\SlugHelper as BaseSlugHelper;
  * @method static array getCanEmptyPrefixes()
  * @method static \Tec\Slug\SlugCompiler getTranslator()
  * @method static array getSlugPrefixes()
- * @deprecated
  * @see \Tec\Slug\SlugHelper
  */
-class SlugHelperFacade extends Facade
+class SlugHelper extends Facade
 {
     protected static function getFacadeAccessor(): string
     {

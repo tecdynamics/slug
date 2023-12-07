@@ -2,10 +2,11 @@
 
 namespace Tec\Slug\Repositories\Caches;
 
-use Tec\Slug\Repositories\Interfaces\SlugInterface;
-use Tec\Support\Repositories\Caches\CacheAbstractDecorator;
+use Tec\Slug\Repositories\Eloquent\SlugRepository;
 
-class SlugCacheDecorator extends CacheAbstractDecorator implements SlugInterface
+/**
+ * @deprecated
+ */
+class SlugCacheDecorator extends SlugRepository
 {
-
 }

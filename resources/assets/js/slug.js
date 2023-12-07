@@ -1,84 +1,98 @@
 class SlugBoxManagement {
     init() {
-        $(document).on('click', '#change_slug', event =>  {
-            $('.default-slug').unwrap();
-            let $slug_input = $('#editable-post-name');
-            $slug_input.html('<input type="text" id="new-post-slug" class="form-control" value="' + $slug_input.text() + '" autocomplete="off">');
-            $('#edit-slug-box .cancel').show();
-            $('#edit-slug-box .save').show();
-            $(event.currentTarget).hide();
-        });
+        let $slugBox = $('#edit-slug-box')
+        $(document).on('click', '#change_slug', (event) => {
+            $('.default-slug').unwrap()
+            let $slugInput = $('#editable-post-name')
+            $slugInput.html(
+                '<input type="text" id="new-post-slug" class="form-control" value="' +
+                    $slugInput.text() +
+                    '" autocomplete="off">'
+            )
+            $('#edit-slug-box .cancel').show()
+            $('#edit-slug-box .save').show()
+            $(event.currentTarget).hide()
+        })
 
         $(document).on('click', '#edit-slug-box .cancel', () => {
-            let currentSlug = $('#current-slug').val();
-            let $permalink = $('#sample-permalink');
-            $permalink.html('<a class="permalink" href="' + $('#slug_id').data('view') + currentSlug.replace('/', '') + '">' + $permalink.html() + '</a>');
-            $('#editable-post-name').text(currentSlug);
-            $('#edit-slug-box .cancel').hide();
-            $('#edit-slug-box .save').hide();
-            $('#change_slug').show();
-        });
+            let currentSlug = $('#current-slug').val()
+            let $permalink = $('#sample-permalink')
+            $permalink.html(
+                '<a class="permalink" href="' +
+                    $('#slug_id').data('view') +
+                    currentSlug.replace('/', '') +
+                    '">' +
+                    $permalink.html() +
+                    '</a>'
+            )
+            $('#editable-post-name').text(currentSlug)
+            $('#edit-slug-box .cancel').hide()
+            $('#edit-slug-box .save').hide()
+            $('#change_slug').show()
+        })
 
         let createSlug = (name, id, exist) => {
-            $.ajax({
-                url: $('#slug_id').data('url'),
-                type: 'POST',
-                data: {
-                    name: name,
-                    slug_id: id,
+            $httpClient
+                .make()
+                .post($('#slug_id').data('url'), {
+                    value: name,
+                    slug_id: id.toString(),
                     model: $('input[name=model]').val(),
-                },
-                success: data =>  {
-                    let $permalink = $('#sample-permalink');
-                    let $slug_id = $('#slug_id');
+                })
+                .then(({ data }) => {
+                    let $permalink = $('#sample-permalink')
+                    let $slugId = $('#slug_id')
+
                     if (exist) {
-                        $permalink.find('.permalink').prop('href', $slug_id.data('view') + data.replace('/', ''));
+                        $permalink.find('.permalink').prop('href', $slugId.data('view') + data.replace('/', ''))
                     } else {
-                        $permalink.html('<a class="permalink" target="_blank" href="' + $slug_id.data('view') + data.replace('/', '') + '">' + $permalink.html() + '</a>');
+                        $permalink.html(
+                            '<a class="permalink" target="_blank" href="' +
+                                $slugId.data('view') +
+                                data.replace('/', '') +
+                                '">' +
+                                $permalink.html() +
+                                '</a>'
+                        )
                     }
 
-                    $('.page-url-seo p').text($slug_id.data('view') + data.replace('/', ''));
+                    $('.page-url-seo p').text($slugId.data('view') + data.replace('/', ''))
 
-                    $('#editable-post-name').text(data);
-                    $('#current-slug').val(data);
-                    $('#edit-slug-box .cancel').hide();
-                    $('#edit-slug-box .save').hide();
-                    $('#change_slug').show();
-                    $('#edit-slug-box').removeClass('hidden');
-                },
-                error: data =>  {
-                    Tec.handleError(data);
-                }
-            });
-        };
+                    $('#editable-post-name').text(data)
+                    $('#current-slug').val(data)
+                    $('#edit-slug-box .cancel').hide()
+                    $('#edit-slug-box .save').hide()
+                    $('#change_slug').show()
+                    $slugBox.removeClass('hidden')
+                })
+        }
 
         $(document).on('click', '#edit-slug-box .save', () => {
-            let $post_slug = $('#new-post-slug');
-            let name = $post_slug.val();
-            let id = $('#slug_id').data('id');
+            let $slugField = $('#new-post-slug')
+            let name = $slugField.val()
+            let id = $('#slug_id').data('id')
             if (id == null) {
-                id = 0;
+                id = 0
             }
             if (name != null && name !== '') {
-                createSlug(name, id, false);
+                createSlug(name, id, false)
             } else {
-                $post_slug.closest('.form-group').addClass('has-error');
+                $slugField.closest('.form-group').addClass('has-error')
             }
-        });
+        })
 
-        $(document).on('blur', '#name', (e) => {
-            if ($('#edit-slug-box').hasClass('hidden')) {
-                let name = $(e.currentTarget).val();
+        $(document).on('blur', '#' + $slugBox.data('field-name'), (e) => {
+            if ($slugBox.hasClass('hidden')) {
+                let value = $(e.currentTarget).val()
 
-                if (name !== null && name !== '') {
-                    createSlug(name, 0, true);
+                if (value !== null && value !== '') {
+                    createSlug(value, 0, true)
                 }
             }
-
-        });
+        })
     }
 }
 
 $(() => {
-    new SlugBoxManagement().init();
-});
+    new SlugBoxManagement().init()
+})

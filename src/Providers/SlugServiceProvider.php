@@ -2,76 +2,71 @@
 
 namespace Tec\Slug\Providers;
 
-use BaseHelper;
+use Tec\Base\Facades\BaseHelper;
+use Tec\Base\Facades\DashboardMenu;
+use Tec\Base\Facades\MacroableModels;
 use Tec\Base\Models\BaseModel;
+use Tec\Base\Supports\ServiceProvider;
 use Tec\Base\Traits\LoadAndPublishDataTrait;
 use Tec\Page\Models\Page;
+use Tec\Slug\Facades\SlugHelper;
 use Tec\Slug\Models\Slug;
-use Tec\Slug\Repositories\Caches\SlugCacheDecorator;
 use Tec\Slug\Repositories\Eloquent\SlugRepository;
 use Tec\Slug\Repositories\Interfaces\SlugInterface;
-use Tec\Slug\SlugHelper;
-use Illuminate\Support\Facades\Event;
+use Tec\Slug\SlugCompiler;
 use Illuminate\Routing\Events\RouteMatched;
-use Illuminate\Support\ServiceProvider;
-use MacroableModels;
 
 class SlugServiceProvider extends ServiceProvider
 {
     use LoadAndPublishDataTrait;
 
-    /**
-     * This provider is deferred and should be lazy loaded.
-     *
-     * @var boolean
-     */
-    protected $defer = true;
+    protected bool $defer = true;
 
-    public function register()
+    public function register(): void
     {
+        $this
+            ->setNamespace('packages/slug')
+            ->loadAndPublishTranslations();
+
         $this->app->bind(SlugInterface::class, function () {
-            return new SlugCacheDecorator(new SlugRepository(new Slug));
+            return new SlugRepository(new Slug());
         });
 
         $this->app->singleton(SlugHelper::class, function () {
-            return new SlugHelper;
+            return new SlugHelper(new SlugCompiler());
         });
-
-        $this->setNamespace('packages/slug')
-            ->loadHelpers();
     }
 
-    public function boot()
+    public function boot(): void
     {
         $this
             ->loadAndPublishConfigurations(['general'])
+            ->loadHelpers()
             ->loadAndPublishViews()
-            ->loadRoutes(['web'])
-            ->loadAndPublishTranslations()
+            ->loadRoutes()
             ->loadMigrations()
             ->publishAssets();
 
         $this->app->register(EventServiceProvider::class);
         $this->app->register(CommandServiceProvider::class);
 
-        Event::listen(RouteMatched::class, function () {
-            dashboard_menu()
-                ->registerItem([
-                    'id'          => 'cms-packages-slug-permalink',
-                    'priority'    => 5,
-                    'parent_id'   => 'cms-core-settings',
-                    'name'        => 'packages/slug::slug.permalink_settings',
-                    'icon'        => null,
-                    'url'         => route('slug.settings'),
-                    'permissions' => ['setting.options'],
-                ]);
+        $this->app['events']->listen(RouteMatched::class, function () {
+            DashboardMenu::registerItem([
+                'id' => 'cms-packages-slug-permalink',
+                'priority' => 5,
+                'parent_id' => 'cms-core-settings',
+                'name' => 'packages/slug::slug.permalink_settings',
+                'icon' => null,
+                'url' => route('slug.settings'),
+                'permissions' => ['settings.options'],
+            ]);
         });
 
         $this->app->booted(function () {
             $this->app->register(FormServiceProvider::class);
 
-            foreach (array_keys($this->app->make(SlugHelper::class)->supportedModels()) as $item) {
-                if (!class_exists($item)) {
+            foreach (array_keys( SlugHelper::supportedModels()) as $item) {
+                if (! class_exists($item)) {
                     continue;
                 }
 
@@ -79,55 +74,72 @@ class SlugServiceProvider extends ServiceProvider
                  * @var BaseModel $item
                  */
                 $item::resolveRelationUsing('slugable', function ($model) {
-                    return $model->morphOne(Slug::class, 'reference');
+                    return $model->morphOne(Slug::class, 'reference')->select([
+                        'id',
+                        'key',
+                        'reference_type',
+                        'reference_id',
+                        'prefix',
+                    ]);
                 });
 
-                MacroableModels::addMacro($item, 'getSlugAttribute', function () {
-                    /**
-                     * @var BaseModel $this
-                     */
-                    return $this->slugable ? $this->slugable->key : '';
-                });
-
-                MacroableModels::addMacro($item, 'getSlugIdAttribute', function () {
-                    /**
-                     * @var BaseModel $this
-                     */
-                    return $this->slugable ? $this->slugable->id : '';
-                });
-
-                MacroableModels::addMacro($item,
-                    'getUrlAttribute',
-                    function () {
+                if (! method_exists($item, 'getSlugAttribute') && ! method_exists($item, 'slug') && ! property_exists($item, 'slug')) {
+                    MacroableModels::addMacro($item, 'getSlugAttribute', function () {
                         /**
                          * @var BaseModel $this
                          */
-
-                        if (!$this->slug) {
-                            return url('');
-                        }
-
-                        if (get_class($this) == Page::class && BaseHelper::isHomepage($this->id)) {
-                            return url('');
-                        }
-
-                        $prefix = $this->slugable ? $this->slugable->prefix : null;
-                        $prefix = apply_filters(FILTER_SLUG_PREFIX, $prefix);
-
-                        return apply_filters('slug_filter_url', url($prefix ? $prefix . '/' . $this->slug : $this->slug));
+                        return $this->slugable ? $this->slugable->key : '';
                     });
+                }
+
+                if (! method_exists($item, 'getSlugIdAttribute') && ! method_exists($item, 'slugId') && ! property_exists($item, 'slug_id')) {
+                    MacroableModels::addMacro($item, 'getSlugIdAttribute', function () {
+                        /**
+                         * @var BaseModel $this
+                         */
+                        return $this->slugable ? $this->slugable->getKey() : '';
+                    });
+                }
+
+                if (! method_exists($item, 'getUrlAttribute') && ! method_exists($item, 'url') && ! property_exists($item, 'url')) {
+                    MacroableModels::addMacro(
+                        $item,
+                        'getUrlAttribute',
+                        function () {
+                            /**
+                             * @var BaseModel $this
+                             */
+                            $model = $this;
+
+                            $slug = $model->slugable;
+
+                            if (
+                                ! $slug ||
+                                ! $slug->key ||
+                                (get_class($model) == Page::class && BaseHelper::isHomepage($model->getKey()))
+                            ) {
+                                return route('public.index');
+                            }
+
+                            $prefix = SlugHelper::getTranslator()->compile(
+                                apply_filters(FILTER_SLUG_PREFIX, $slug->prefix),
+                                $model
+                            );
+
+                            return apply_filters(
+                                'slug_filter_url',
+                                url(ltrim($prefix . '/' . $slug->key, '/')) . SlugHelper::getPublicSingleEndingURL()
+                            );
+                        }
+                    );
+                }
             }
 
             $this->app->register(HookServiceProvider::class);
         });
     }
 
-    /**
-     * Which IoC bindings the provider provides.
-     *
-     * @return array
-     */
-    public function provides()
+    public function provides(): array
     {
         return [
             SlugHelper::class,

@@ -2,45 +2,38 @@
 
 namespace Tec\Slug\Http\Requests;
 
+use Tec\Slug\Facades\SlugHelper;
 use Tec\Support\Http\Requests\Request;
 use Illuminate\Support\Str;
-use SlugHelper;
 
 class SlugSettingsRequest extends Request
 {
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array
-     */
-    public function rules()
+    public function rules(): array
     {
         $rules = [];
 
         $canEmptyPrefixes = SlugHelper::getCanEmptyPrefixes();
 
         foreach ($this->except(['_token']) as $settingKey => $settingValue) {
-            if (!Str::contains($settingKey, '-model-key')) {
+            if (! Str::contains($settingKey, '-model-key')) {
                 continue;
             }
 
             $prefixKey = str_replace('-model-key', '', $settingKey);
 
-            if (!in_array($settingValue, $canEmptyPrefixes)) {
-                $rules[$prefixKey] = 'required|regex:/^[\pL\s\ \_\-0-9\/]+$/u';
+            $regex = 'regex:/^[\pL\s\ \_\%\-0-9\/]+$/u';
+
+            if (! in_array($settingValue, $canEmptyPrefixes)) {
+                $rules[$prefixKey] = 'required|' . $regex;
             } else {
-                $rules[$prefixKey] = 'nullable|regex:/^[\pL\s\ \_\-0-9\/]+$/u';
+                $rules[$prefixKey] = 'nullable|' . $regex;
             }
         }
 
         return $rules;
     }
 
-    /**
-     * @return array
-     */
-    public function attributes()
+    public function attributes(): array
     {
         $attributes = [];
         foreach (SlugHelper::supportedModels() as $model => $name) {

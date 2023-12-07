@@ -2,17 +2,19 @@
 
 namespace Tec\Slug\Providers;
 
+use Tec\Base\Supports\ServiceProvider;
 use Tec\Slug\Commands\ChangeSlugPrefixCommand;
-use Illuminate\Support\ServiceProvider;
 
 class CommandServiceProvider extends ServiceProvider
 {
-    public function boot()
+    public function boot(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                ChangeSlugPrefixCommand::class,
-            ]);
+        if (! $this->app->runningInConsole()) {
+            return;
         }
+
+        $this->commands([
+            ChangeSlugPrefixCommand::class,
+        ]);
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Queue\SerializesModels;
 
 class UpdatedSlugEvent extends Event
 {
+    use Dispatchable;
     use SerializesModels;
 
     public function __construct(public bool|Model|null $data, public Slug $slug)

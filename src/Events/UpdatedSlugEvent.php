@@ -5,6 +5,7 @@ namespace Tec\Slug\Events;
 use Tec\Base\Events\Event;
 use Tec\Slug\Models\Slug;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 class UpdatedSlugEvent extends Event

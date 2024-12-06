@@ -2,6 +2,7 @@
 
 namespace Tec\Slug\Listeners;
 
+use Tec\Base\Contracts\BaseModel;
 use Tec\Base\Events\CreatedContentEvent;
 use Tec\Base\Facades\BaseHelper;
 use Tec\Slug\Facades\SlugHelper;
@@ -14,7 +15,7 @@ class CreatedContentListener
 {
     public function handle(CreatedContentEvent $event): void
     {
-        if (SlugHelper::isSupportedModel($class = get_class($event->data)) && $event->request->input('is_slug_editable', 0)) {
+        if ($event->data instanceof BaseModel && SlugHelper::isSupportedModel($class = $event->data::class) && $event->request->input('is_slug_editable', 0)) {
             try {
                 $slug = $event->request->input('slug');
 
@@ -39,10 +40,10 @@ class CreatedContentListener
                 $slugService = new SlugService();
 
                 Slug::query()->create([
-                    'key' => $slugService->create($slug, (int)$event->data->slug_id, $class),
+                    'key' => $slugService->create($slug, (int) $event->data->slug_id, $class),
                     'reference_type' => $class,
                     'reference_id' => $event->data->getKey(),
-                    'prefix' => SlugHelper::getPrefix($class),
+                    'prefix' => SlugHelper::getPrefix($class, '', false),
                 ]);
             } catch (Exception $exception) {
                 BaseHelper::logError($exception);

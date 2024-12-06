@@ -1,18 +1,31 @@
-@if ($showLabel && $showField)
-    @if ($options['wrapper'] !== false)
-        <div {!! $options['wrapperAttrs'] !!}>
-    @endif
-@endif
+@php
+    $model = (object)$options['model'];
+    $options['prefix'] = SlugHelper::getPrefix($model::class);
+@endphp
 
-@if ($showField)
-    {!! Form::permalink($name, $options['value'], 0, $prefix) !!}
-    @include('core/base::forms.partials.help-block')
-@endif
+<input
+    type="hidden"
+    name="model"
+    value="{{ $model::class }}"
+>
 
-@include('core/base::forms.partials.errors')
-
-@if ($showLabel && $showField)
-    @if ($options['wrapper'] !== false)
-        </div>
-    @endif
+@if (empty($model))
+    <div class="mb-3 @if ($errors->has($name)) has-error @endif">
+        {!! Form::permalink($name, old($name), 0, $options['prefix'], [], true, $model) !!}
+        {!! Form::error($name, $errors) !!}
+    </div>
+@else
+    <div class="mb-3 @if ($errors->has($name)) has-error @endif">
+        {!! Form::permalink(
+            $name,
+            $model->slug,
+            $model->slug_id,
+            $options['prefix'],
+            SlugHelper::canPreview($model) && in_array($model->status, [Tec\Base\Enums\BaseStatusEnum::DRAFT, Tec\Base\Enums\BaseStatusEnum::PENDING]),
+            [],
+            true,
+            $model,
+        ) !!}
+        {!! Form::error($name, $errors) !!}
+    </div>
 @endif

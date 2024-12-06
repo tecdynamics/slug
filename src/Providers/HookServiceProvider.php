@@ -2,36 +2,42 @@
 
 namespace Tec\Slug\Providers;
 
-use Tec\Base\Facades\Assets;
+use Tec\Base\Contracts\BaseModel;
+use Tec\Base\Forms\FormAbstract;
 use Tec\Base\Supports\ServiceProvider;
 use Tec\Slug\Facades\SlugHelper;
-use Illuminate\Database\Eloquent\Model;
+use Tec\Slug\Forms\Fields\PermalinkField;
 
 class HookServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        add_filter(BASE_FILTER_SLUG_AREA, [$this, 'addSlugBox'], 17, 2);
+        FormAbstract::beforeRendering([$this, 'addSlugBox'], 17);
 
         add_filter('core_slug_language', [$this, 'setSlugLanguageForGenerator'], 17);
     }
 
-    public function addSlugBox(string|null $html = null, ?Model $object = null): string|null
+    public function addSlugBox(FormAbstract $form): FormAbstract
     {
-        if ($object && SlugHelper::isSupportedModel($class = get_class($object))) {
-            Assets::addScriptsDirectly('vendor/core/packages/slug/js/slug.js')
-                ->addStylesDirectly('vendor/core/packages/slug/css/slug.css');
+        $model = $form->getModel();
 
-            $prefix = SlugHelper::getPrefix($class);
-
-            return $html . view('packages/slug::partials.slug', compact('object', 'prefix'))->render();
+        if (! $model instanceof BaseModel || ! SlugHelper::isSupportedModel($model::class)) {
+            return $form;
         }
 
-        return $html;
+        if (array_key_exists('slug', $form->getFields())) {
+            return $form;
+        }
+
+        return $form
+            ->addAfter(SlugHelper::getColumnNameToGenerateSlug($model), 'slug', PermalinkField::class, [
+                'model' => $model,
+                'colspan' => 'full',
+            ]);
     }
 
     public function setSlugLanguageForGenerator(): bool|string
     {
-        return ! SlugHelper::turnOffAutomaticUrlTranslationIntoLatin() ? 'en' : false;
+        return SlugHelper::turnOffAutomaticUrlTranslationIntoLatin() ? false : 'en';
     }
 }

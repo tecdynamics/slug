@@ -8,7 +8,7 @@
         }
     },
     "require": {
-        "tecdynamics/platform": "*"
+        "tecdynamics/platform": "*@dev"
     },
     "extra": {
         "laravel": {

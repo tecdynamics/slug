@@ -4,24 +4,6 @@
     margin-top: 5px;
 }
 
-#change_slug,
-#btn-ok,
-.btn-preview {
-    height: 24px;
-    line-height: 22px !important;
-    padding: 0 8px 1px !important;
-    font-size: 11px !important;
-    vertical-align: top;
-    margin: 0;
-}
-
-#change_slug,
-#btn-ok {
-    color: #555555 !important;
-    border-color: #cccccc;
-    background: #f7f7f7;
-}
-
 .btn-preview {
     margin-left: 10px;
     color: #fff !important;
@@ -58,9 +40,5 @@
     background: 0 0;
     outline: 0;
     cursor: pointer;
-    display: none;
-}
-
-#btn-ok {
     display: none;
 }

@@ -3,18 +3,21 @@
 namespace Tec\Slug\Providers;
 
 use Tec\Base\Facades\BaseHelper;
-use Tec\Base\Facades\DashboardMenu;
 use Tec\Base\Facades\MacroableModels;
+use Tec\Base\Facades\PanelSectionManager;
 use Tec\Base\Models\BaseModel;
+use Tec\Base\PanelSections\PanelSectionItem;
 use Tec\Base\Supports\ServiceProvider;
 use Tec\Base\Traits\LoadAndPublishDataTrait;
 use Tec\Page\Models\Page;
-use Tec\Slug\Facades\SlugHelper;
+use Tec\Setting\PanelSections\SettingCommonPanelSection;
+use Tec\Slug\Facades\SlugHelper as SlugHelperFacade;
 use Tec\Slug\Models\Slug;
 use Tec\Slug\Repositories\Eloquent\SlugRepository;
 use Tec\Slug\Repositories\Interfaces\SlugInterface;
 use Tec\Slug\SlugCompiler;
-use Illuminate\Routing\Events\RouteMatched;
+use Tec\Slug\SlugHelper;
+use Illuminate\Database\Eloquent\Model;
 
 class SlugServiceProvider extends ServiceProvider
 {
@@ -24,10 +27,6 @@ class SlugServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        $this
-            ->setNamespace('packages/slug')
-            ->loadAndPublishTranslations();
-
         $this->app->bind(SlugInterface::class, function () {
             return new SlugRepository(new Slug());
         });
@@ -40,8 +39,10 @@ class SlugServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this
+            ->setNamespace('packages/slug')
             ->loadAndPublishConfigurations(['general'])
             ->loadHelpers()
+            ->loadAndPublishTranslations()
             ->loadAndPublishViews()
             ->loadRoutes()
             ->loadMigrations()
@@ -50,22 +51,25 @@ class SlugServiceProvider extends ServiceProvider
         $this->app->register(EventServiceProvider::class);
         $this->app->register(CommandServiceProvider::class);
 
-        $this->app['events']->listen(RouteMatched::class, function () {
-            DashboardMenu::registerItem([
-                'id' => 'cms-packages-slug-permalink',
-                'priority' => 5,
-                'parent_id' => 'cms-core-settings',
-                'name' => 'packages/slug::slug.permalink_settings',
-                'icon' => null,
-                'url' => route('slug.settings'),
-                'permissions' => ['settings.options'],
-            ]);
+        PanelSectionManager::default()->beforeRendering(function () {
+            PanelSectionManager::registerItem(
+                SettingCommonPanelSection::class,
+                fn () => PanelSectionItem::make('permalink')
+                    ->setTitle(trans('packages/slug::slug.permalink_settings'))
+                    ->withIcon('ti ti-link')
+                    ->withDescription(trans('packages/slug::slug.permalink_settings_description'))
+                    ->withPriority(90)
+                    ->withRoute('slug.settings')
+                    ->withPermission('settings.options')
+            );
         });
 
         $this->app->booted(function () {
             $this->app->register(FormServiceProvider::class);
 
-            foreach (array_keys( SlugHelper::supportedModels()) as $item) {
+            $supportedModels = array_keys($this->app->make(SlugHelper::class)->supportedModels());
+
+            foreach ($supportedModels as $item) {
                 if (! class_exists($item)) {
                     continue;
                 }
@@ -116,23 +120,30 @@ class SlugServiceProvider extends ServiceProvider
                             if (
                                 ! $slug ||
                                 ! $slug->key ||
-                                (get_class($model) == Page::class && BaseHelper::isHomepage($model->getKey()))
+                                ($model instanceof Page && BaseHelper::isHomepage($model->getKey()))
                             ) {
-                                return route('public.index');
+                                return BaseHelper::getHomepageUrl();
                             }
 
-                            $prefix = SlugHelper::getTranslator()->compile(
+                            $prefix = SlugHelperFacade::getTranslator()->compile(
                                 apply_filters(FILTER_SLUG_PREFIX, $slug->prefix),
                                 $model
                             );
 
                             return apply_filters(
                                 'slug_filter_url',
-                                url(ltrim($prefix . '/' . $slug->key, '/')) . SlugHelper::getPublicSingleEndingURL()
+                                url(ltrim($prefix . '/' . $slug->key, '/')) . SlugHelperFacade::getPublicSingleEndingURL()
                             );
                         }
                     );
                 }
+
+                $this->app['events']->listen('eloquent.deleted: ' . $item, function (Model $model) {
+                    Slug::query()
+                        ->where('reference_type', $model::class)
+                        ->where('reference_id', $model->getKey())
+                        ->each(fn (Slug $slug) => $slug->delete());
+                });
             }
 
             $this->app->register(HookServiceProvider::class);

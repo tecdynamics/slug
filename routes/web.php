@@ -16,7 +16,6 @@ Route::group(['namespace' => 'Tec\Slug\Http\Controllers'], function () {
                 'as' => 'slug.settings.update',
                 'uses' => 'SlugController@update',
                 'permission' => 'settings.options',
-                'middleware' => 'preventDemo',
             ]);
         });
     });
